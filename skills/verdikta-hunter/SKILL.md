@@ -43,7 +43,7 @@ This skill can spend real ETH. The safety envelope, enforced by `skills/verdikta
 
 ## Steps
 
-### 0. Parse `${var}` and load context
+### 0. Parse the mode selector and load context
 
 - Parse the mode: empty → `MODE=discover`; `hunt[:<jobId>]` → `MODE=hunt`; `dry-run[:<jobId>]` → `MODE=hunt` with `DRY_RUN=true`. A trailing `<jobId>` pins the target bounty.
 - Read `memory/MEMORY.md` and the last ~3 days of `memory/logs/` (don't re-report signals already sent).
@@ -240,7 +240,7 @@ Claims the reward or refunds the escrow. **Mandatory** — the escrow stays lock
 
 This template injects the `requires:` keys directly into the run's environment; bash egress is open, but any command line containing a secret expansion is refused by the permission layer. So:
 
-- **Authed API reads:** always `./secretcurl` with the literal `{VERDIKTA_API_KEY}` placeholder (never `$VERDIKTA_API_KEY`). Capture `-w '%{http_code}'` and print `http=<code>` before deciding anything; fall back to WebFetch only for *public* pages, never for authed calls.
+- **Authed API reads:** always `./secretcurl` with the key written as the literal brace placeholder `{VERDIKTA_API_KEY}`. Never rewrite it into a shell variable expansion — a command line carrying an expanded secret is refused by the permission layer. Capture `-w '%{http_code}'` and print `http=<code>` before deciding anything; fall back to WebFetch only for *public* pages, never for authed calls.
 - **Signing:** only `skills/verdikta-hunter/verdikta_exec.py`. It reads `VERDIKTA_WALLET_KEY` from its own environment — the key never appears in your commands, and the cap envelope lives in deterministic code. Do not install web3 libraries or hand-roll transactions; a cap refusal from the executor is an answer, not an obstacle.
 
 ## Exit codes
