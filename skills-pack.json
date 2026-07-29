@@ -1,0 +1,21 @@
+{
+  "name": "Verdikta Skill Pack",
+  "version": "1.0.0",
+  "description": "Hunt Verdikta AI-judged bounties on Base — rubric-targeted reports and hard-capped on-chain submission",
+  "author": "verdikta",
+  "license": "MIT",
+  "homepage": "https://bounties.verdikta.org",
+  "skills": [
+    {
+      "slug": "verdikta-hunter",
+      "path": "skills/verdikta-hunter",
+      "description": "Discover open Verdikta bounties, write rubric-targeted reports, and submit on-chain through a deterministic executor with a hard client-side spend cap (the model never signs)",
+      "category": "crypto",
+      "schedule": "workflow_dispatch",
+      "default_enabled": false,
+      "secrets_required": ["VERDIKTA_API_KEY"],
+      "secrets_optional": ["VERDIKTA_WALLET_KEY"],
+      "capabilities": ["external_api", "writes_external_host", "onchain_writes", "sends_notifications"]
+    }
+  ]
+}

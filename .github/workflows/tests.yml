@@ -1,0 +1,37 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      # Deliberately no pip install: the suite stubs eth_account/requests so the
+      # fund-safety envelope is tested with zero network reachability.
+      - name: fund-safety tests
+        run: python3 tests/test_verdikta_exec.py
+      - name: manifest is valid JSON and declares known capabilities
+        run: |
+          python3 - <<'EOF'
+          import json, sys
+          ALLOWED = {"read_only", "external_api", "writes_external_host",
+                     "onchain_writes", "agent_messaging", "sends_notifications"}
+          m = json.load(open("skills-pack.json"))
+          assert m["skills"], "no skills declared"
+          for s in m["skills"]:
+              bad = set(s.get("capabilities", [])) - ALLOWED
+              assert not bad, f"unknown capabilities: {bad}"
+              assert s["slug"].replace("-", "").replace("_", "").isalnum(), "bad slug"
+              open(f"{s.get('path', 'skills/' + s['slug'])}/SKILL.md").close()
+          print(f"manifest OK — {len(m['skills'])} skill(s)")
+          EOF
