@@ -74,22 +74,56 @@ def load_caps():
     return resolved
 
 
-def ensure_deps():
-    """Install the two runtime deps if absent (mirrors vuln-scanner's in-run staging)."""
+def _deps_importable():
     try:
         import eth_account  # noqa: F401
         import requests  # noqa: F401
         return True
     except ImportError:
-        print("verdikta-exec: installing python deps (eth-account, requests)...")
-        r = subprocess.run(
-            [sys.executable, "-m", "pip", "install", "--quiet", "eth-account", "requests"],
-            capture_output=True, text=True,
-        )
-        if r.returncode != 0:
-            print(f"::warning::verdikta-exec: dep install failed: {r.stderr[:300]}")
-            return False
+        return False
+
+
+def ensure_deps():
+    """Install the two runtime deps if absent (mirrors vuln-scanner's in-run staging).
+
+    A pip exit code of 0 is NOT proof the module is importable *here*: a fresh
+    install usually lands in a site directory that did not exist — and so was not
+    on sys.path — when this interpreter started. Re-scan the site dirs, drop the
+    import caches, and verify by actually importing before reporting success.
+    """
+    if _deps_importable():
         return True
+
+    print("verdikta-exec: installing python deps (eth-account, requests)...")
+    cmd = [sys.executable, "-m", "pip", "install", "--quiet", "eth-account", "requests"]
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    if r.returncode != 0:
+        # Retry into the user site dir — the common failure is an unwritable
+        # system site-packages on a managed/externally-managed interpreter.
+        r = subprocess.run(cmd + ["--user"], capture_output=True, text=True)
+    if r.returncode != 0:
+        print(f"::warning::verdikta-exec: dep install failed: {(r.stderr or r.stdout)[:300]}")
+        return False
+
+    import importlib
+    import site
+    candidates = set()
+    getsite = getattr(site, "getsitepackages", None)   # absent in some venvs
+    if getsite:
+        candidates.update(getsite())
+    getuser = getattr(site, "getusersitepackages", None)
+    if getuser:
+        candidates.add(getuser())
+    for path in candidates:
+        if path and path not in sys.path:
+            sys.path.insert(0, path)
+    importlib.invalidate_caches()
+
+    if _deps_importable():
+        return True
+    print("::warning::verdikta-exec: deps installed but still not importable — "
+          "run `python3 -m pip install eth-account requests` in the run environment and retry")
+    return False
 
 
 # ── state + logging ──────────────────────────────────────────────────────

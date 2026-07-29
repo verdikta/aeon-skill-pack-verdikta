@@ -34,7 +34,7 @@ The skill can spend real ETH, so the spend path is deliberately **not** in the m
 
 A cap refusal is a terminal answer: the skill is instructed never to work around it by signing another way.
 
-18 unit tests pin this envelope (`tests/test_verdikta_exec.py`) and run in CI on every push.
+21 unit tests pin this envelope (`tests/test_verdikta_exec.py`) and run in CI on every push.
 
 ## Configuration
 
@@ -68,7 +68,7 @@ The skill originated as [aeonfun/aeon#605](https://github.com/aeonfun/aeon/pull/
 ## Development
 
 ```bash
-python3 tests/test_verdikta_exec.py     # 18 fund-safety tests, stdlib only
+python3 tests/test_verdikta_exec.py     # 21 fund-safety tests, stdlib only
 ```
 
 MIT licensed.

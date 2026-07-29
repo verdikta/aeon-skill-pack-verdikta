@@ -345,6 +345,49 @@ class VerdiktaSafetyTests(unittest.TestCase):
     def test_no_pending_is_clean_noop(self):
         self.assertEqual(vx.main(), 0)
 
+    # ── dependency bootstrap ─────────────────────────────────────────
+
+    def test_ensure_deps_short_circuits_when_importable(self):
+        calls = []
+        orig = vx.subprocess.run
+        vx.subprocess.run = lambda *a, **k: calls.append(a) or orig(["true"])
+        try:
+            self.assertTrue(vx.ensure_deps())   # stubs are importable in this suite
+        finally:
+            vx.subprocess.run = orig
+        self.assertEqual(calls, [], "pip must not run when deps already import")
+
+    def test_ensure_deps_fails_when_install_succeeds_but_import_does_not(self):
+        """Regression: pip exit 0 is not proof the module is importable in THIS
+        process (a fresh install can land off sys.path). Verified live on run
+        30479053009, where the old code reported success and then crashed with
+        ModuleNotFoundError."""
+        class _Ok:
+            returncode, stderr, stdout = 0, "", ""
+        orig_run, orig_check = vx.subprocess.run, vx._deps_importable
+        vx.subprocess.run = lambda *a, **k: _Ok()
+        vx._deps_importable = lambda: False          # never becomes importable
+        try:
+            self.assertFalse(vx.ensure_deps(), "must not claim success on an unusable install")
+        finally:
+            vx.subprocess.run, vx._deps_importable = orig_run, orig_check
+
+    def test_ensure_deps_succeeds_once_import_works_after_install(self):
+        class _Ok:
+            returncode, stderr, stdout = 0, "", ""
+        seen = {"n": 0}
+
+        def _importable():
+            seen["n"] += 1
+            return seen["n"] > 1                     # fails first, works post-install
+        orig_run, orig_check = vx.subprocess.run, vx._deps_importable
+        vx.subprocess.run = lambda *a, **k: _Ok()
+        vx._deps_importable = _importable
+        try:
+            self.assertTrue(vx.ensure_deps())
+        finally:
+            vx.subprocess.run, vx._deps_importable = orig_run, orig_check
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
